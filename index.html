@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="BookCycle - give pre-owned books a second life." />
+    <title>BookCycle | Pre-owned books, new adventures</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#" data-view="browse" aria-label="BookCycle home">
+        <span class="brand-mark">B</span>
+        <span>Book<span>Cycle</span></span>
+      </a>
+      <nav class="main-nav" aria-label="Main navigation">
+        <button class="nav-link active" data-view="browse">Browse books</button>
+        <button class="nav-link" data-view="dashboard">My dashboard</button>
+      </nav>
+      <div class="header-actions">
+        <button class="cart-button" id="cart-button" aria-label="Shopping cart">
+          <span aria-hidden="true">🛒</span>
+          <span class="cart-count" id="cart-count">0</span>
+        </button>
+        <button class="icon-button notification-button" id="notification-button" aria-label="Notifications">
+          <span aria-hidden="true">♡</span>
+          <i class="notification-dot hidden"></i>
+        </button>
+        <div id="account-area"></div>
+      </div>
+    </header>
+
+    <main id="app" class="page-shell"></main>
+
+    <div class="modal-backdrop hidden" id="modal-backdrop">
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <button class="modal-close" id="modal-close" aria-label="Close dialog">×</button>
+        <div id="modal-content"></div>
+      </section>
+    </div>
+    <div class="toast hidden" id="toast" role="status"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
