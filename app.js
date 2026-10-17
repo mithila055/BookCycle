@@ -80,7 +80,8 @@ function renderHeader() {
   });
   document.querySelector("#login-button")?.addEventListener("click", () => showAuth("login"));
   document.querySelector("#header-list-book")?.addEventListener("click", showListingForm);
-  document.querySelector("#cart-button").onclick = showCart;
+  const cartButton = document.querySelector("#cart-button");
+  cartButton.onclick = () => showCart();
 }
 
 function addToCart(bookId) {
@@ -90,35 +91,69 @@ function addToCart(bookId) {
   persist(); renderHeader(); showToast("Book added to your cart.");
 }
 
-function showCart() {
+function showCart(selectedIds = state.cart.map(item => item.bookId)) {
   if (!state.cart.length) {
     openModal(`<h2>Your cart is empty</h2><p class="modal-intro">Save books here while you decide which ones deserve a new home.</p><button class="button full" id="continue-shopping">Continue browsing</button>`);
     document.querySelector("#continue-shopping").onclick = closeModal;
     return;
   }
   const items = state.cart.map(item => ({ ...item, book: state.books.find(book => book.id === item.bookId) })).filter(item => item.book);
-  const total = items.reduce((sum, item) => sum + item.book.price * item.quantity, 0);
+  const selectedItems = items.filter(item => selectedIds.includes(item.book.id));
+  const total = selectedItems.reduce((sum, item) => sum + item.book.price * item.quantity, 0);
   openModal(`<h2>Your cart</h2><p class="modal-intro">${items.length} book${items.length > 1 ? "s" : ""} ready for checkout.</p>
-    <div>${items.map(item => `<div class="cart-row">${miniCover(item.book)}<div class="row-content"><strong>${escapeHTML(item.book.title)}</strong><small>${money(item.book.price)} each</small></div><div class="quantity-controls"><button data-cart-action="decrease" data-cart-id="${item.book.id}" aria-label="Decrease quantity">−</button><span class="quantity-value">${item.quantity}</span><button data-cart-action="increase" data-cart-id="${item.book.id}" aria-label="Increase quantity">+</button></div><button class="text-button" data-cart-action="remove" data-cart-id="${item.book.id}">Remove</button></div>`).join("")}</div>
-    <div class="cart-total"><span>Total</span><span class="price">${money(total)}</span></div><div class="form-actions"><button class="button outline" id="clear-cart">Clear cart</button><button class="button coral" id="checkout-cart">Checkout</button></div>`);
+    <div class="cart-selection-note">Select the books you want to order.</div><div>${items.map(item => `<div class="cart-row"><label class="cart-select"><input type="checkbox" data-cart-select="${item.book.id}" ${selectedIds.includes(item.book.id) ? "checked" : ""} aria-label="Select ${escapeHTML(item.book.title)}" /></label>${miniCover(item.book)}<div class="row-content"><strong>${escapeHTML(item.book.title)}</strong><small>${money(item.book.price)} each</small></div><div class="quantity-controls"><button data-cart-action="decrease" data-cart-id="${item.book.id}" aria-label="Decrease quantity">−</button><span class="quantity-value">${item.quantity}</span><button data-cart-action="increase" data-cart-id="${item.book.id}" aria-label="Increase quantity">+</button></div><button class="text-button" data-cart-action="remove" data-cart-id="${item.book.id}">Remove</button></div>`).join("")}</div>
+    <div class="cart-total"><span>Selected total</span><span class="price">${money(total)}</span></div><div class="form-actions"><button class="button outline" id="clear-cart">Clear cart</button><button class="button coral" id="checkout-cart" ${selectedItems.length ? "" : "disabled"}>Order selected</button></div>`);
+  document.querySelectorAll("[data-cart-select]").forEach(input => input.addEventListener("change", () => {
+    const nextSelectedIds = [...document.querySelectorAll("[data-cart-select]:checked")].map(selected => selected.dataset.cartSelect);
+    showCart(nextSelectedIds);
+  }));
   document.querySelectorAll("[data-cart-action]").forEach(button => button.addEventListener("click", () => {
     const item = state.cart.find(cartItem => cartItem.bookId === button.dataset.cartId);
     if (button.dataset.cartAction === "increase") item.quantity += 1;
     if (button.dataset.cartAction === "decrease") item.quantity -= 1;
     if (button.dataset.cartAction === "remove" || item.quantity <= 0) state.cart = state.cart.filter(cartItem => cartItem.bookId !== button.dataset.cartId);
-    persist(); renderHeader(); showCart();
+    persist(); renderHeader(); showCart(selectedIds.filter(id => state.cart.some(cartItem => cartItem.bookId === id)));
   }));
   document.querySelector("#clear-cart").onclick = () => { state.cart = []; persist(); renderHeader(); closeModal(); showToast("Cart cleared."); };
   document.querySelector("#checkout-cart").onclick = () => {
     if (!requireAuth()) return;
-    state.cart.forEach(item => {
-      const book = state.books.find(candidate => candidate.id === item.bookId);
-      if (book && book.owner !== state.currentUser.email) {
-        state.orders.push({ id: Date.now() + Math.random(), title: book.title, price: book.price * item.quantity, color: book.color, buyer: state.currentUser.email, seller: book.owner || book.seller, status: "Pending" });
-      }
-    });
-    state.cart = []; persist(); renderHeader(); closeModal(); showToast("Checkout request sent to the sellers.");
+    showCheckout(selectedItems, selectedIds);
   };
+}
+
+function showCheckout(selectedItems, selectedIds) {
+  const purchasableItems = selectedItems.filter(item => item.book.owner !== state.currentUser.email);
+  if (!purchasableItems.length) {
+    showToast("Your own listings cannot be ordered.");
+    return;
+  }
+  const subtotal = purchasableItems.reduce((sum, item) => sum + item.book.price * item.quantity, 0);
+  const deliveryFee = 60;
+  const total = subtotal + deliveryFee;
+  openModal(`<h2>Confirm your order</h2><p class="modal-intro">Review your items and delivery details before sending the request to the sellers.</p>
+    <div class="checkout-summary">${purchasableItems.map(item => `<div class="checkout-item">${miniCover(item.book)}<div class="row-content"><strong>${escapeHTML(item.book.title)}</strong><small>${item.quantity} × ${money(item.book.price)}</small></div><strong>${money(item.book.price * item.quantity)}</strong></div>`).join("")}
+      <div class="checkout-line"><span>Subtotal</span><strong>${money(subtotal)}</strong></div><div class="checkout-line"><span>Delivery charge</span><strong>${money(deliveryFee)}</strong></div><div class="checkout-total"><span>Total</span><strong>${money(total)}</strong></div>
+    </div>
+    <form id="checkout-form"><div class="form-grid">
+      <label class="form-field">Full name<input class="field" name="name" value="${escapeHTML(state.currentUser.name)}" required /></label>
+      <label class="form-field">Phone number<input class="field" name="phone" type="tel" placeholder="01XXXXXXXXX" required /></label>
+      <label class="form-field full-width">Delivery address<textarea class="field" name="address" rows="3" placeholder="House, road, area, city" required></textarea></label>
+      <label class="form-field full-width">Payment method<select class="select" name="payment"><option>Cash on delivery</option><option>Mobile payment on delivery</option></select></label>
+    </div><div class="form-actions"><button type="button" class="button secondary" id="back-to-cart">Back to cart</button><button class="button coral">Confirm order</button></div></form>`);
+  document.querySelector("#back-to-cart").onclick = () => showCart(selectedIds);
+  document.querySelector("#checkout-form").addEventListener("submit", event => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.target));
+    const orderNumber = `BC-${Date.now().toString().slice(-8)}`;
+    purchasableItems.forEach(item => {
+      state.orders.push({ id: Date.now() + Math.random(), orderNumber, title: item.book.title, price: item.book.price * item.quantity, color: item.book.color, buyer: state.currentUser.email, seller: item.book.owner || item.book.seller, status: "Pending", customer: data.name, phone: data.phone, address: data.address, payment: data.payment });
+    });
+    const orderedIds = purchasableItems.map(item => item.book.id);
+    state.cart = state.cart.filter(item => !orderedIds.includes(item.bookId));
+    persist(); renderHeader();
+    openModal(`<div class="order-success"><div class="success-mark">✓</div><h2>Order request confirmed</h2><p class="modal-intro">Your request has been sent to the seller${purchasableItems.length > 1 ? "s" : ""}.</p><div class="order-number"><span>Order number</span><strong>${orderNumber}</strong></div><p class="notice">You chose ${escapeHTML(data.payment)}. The seller will contact you to confirm availability and delivery.</p><button class="button full" id="finish-order">Continue shopping</button></div>`);
+    document.querySelector("#finish-order").onclick = () => { closeModal(); state.view = "browse"; render(); };
+  });
 }
 
 function bookCard(book) {
