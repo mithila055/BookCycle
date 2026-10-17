@@ -41,6 +41,18 @@ function initials(name) { return name.split(" ").map(part => part[0]).slice(0, 2
 function escapeHTML(value) {
   return String(value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
 }
+function coverContent(book) {
+  const coverImage = book.images?.[0] || book.image;
+  return coverImage
+    ? `<img class="cover-image" src="${escapeHTML(coverImage)}" alt="${escapeHTML(book.title)} cover" />`
+    : `<span class="cover-title">${escapeHTML(book.title)}</span><span class="cover-author">${escapeHTML(book.author)}</span>`;
+}
+function miniCover(book, symbol = "B") {
+  const coverImage = book.images?.[0] || book.image;
+  return coverImage
+    ? `<span class="mini-cover mini-cover-image"><img src="${escapeHTML(coverImage)}" alt="${escapeHTML(book.title)} cover" /></span>`
+    : `<span class="mini-cover" style="background:${escapeHTML(book.color || "#1d6b66")}">${symbol}</span>`;
+}
 function showToast(message) {
   toast.textContent = message;
   toast.classList.remove("hidden");
@@ -87,7 +99,7 @@ function showCart() {
   const items = state.cart.map(item => ({ ...item, book: state.books.find(book => book.id === item.bookId) })).filter(item => item.book);
   const total = items.reduce((sum, item) => sum + item.book.price * item.quantity, 0);
   openModal(`<h2>Your cart</h2><p class="modal-intro">${items.length} book${items.length > 1 ? "s" : ""} ready for checkout.</p>
-    <div>${items.map(item => `<div class="cart-row"><span class="mini-cover" style="background:${item.book.color}">B</span><div class="row-content"><strong>${escapeHTML(item.book.title)}</strong><small>${money(item.book.price)} each</small></div><div class="quantity-controls"><button data-cart-action="decrease" data-cart-id="${item.book.id}" aria-label="Decrease quantity">−</button><span class="quantity-value">${item.quantity}</span><button data-cart-action="increase" data-cart-id="${item.book.id}" aria-label="Increase quantity">+</button></div><button class="text-button" data-cart-action="remove" data-cart-id="${item.book.id}">Remove</button></div>`).join("")}</div>
+    <div>${items.map(item => `<div class="cart-row">${miniCover(item.book)}<div class="row-content"><strong>${escapeHTML(item.book.title)}</strong><small>${money(item.book.price)} each</small></div><div class="quantity-controls"><button data-cart-action="decrease" data-cart-id="${item.book.id}" aria-label="Decrease quantity">−</button><span class="quantity-value">${item.quantity}</span><button data-cart-action="increase" data-cart-id="${item.book.id}" aria-label="Increase quantity">+</button></div><button class="text-button" data-cart-action="remove" data-cart-id="${item.book.id}">Remove</button></div>`).join("")}</div>
     <div class="cart-total"><span>Total</span><span class="price">${money(total)}</span></div><div class="form-actions"><button class="button outline" id="clear-cart">Clear cart</button><button class="button coral" id="checkout-cart">Checkout</button></div>`);
   document.querySelectorAll("[data-cart-action]").forEach(button => button.addEventListener("click", () => {
     const item = state.cart.find(cartItem => cartItem.bookId === button.dataset.cartId);
@@ -111,10 +123,9 @@ function showCart() {
 
 function bookCard(book) {
   return `<article class="book-card">
-    <div class="book-cover" style="background:${escapeHTML(book.color || "#1d6b66")}">
+    <div class="book-cover ${book.image ? "has-image" : ""}" style="background:${escapeHTML(book.color || "#1d6b66")}">
       <span class="cover-badge">${escapeHTML(book.condition)}</span>
-      <span class="cover-title">${escapeHTML(book.title)}</span>
-      <span class="cover-author">${escapeHTML(book.author)}</span>
+      ${coverContent(book)}
     </div>
     <div class="book-info">
       <h3 title="${escapeHTML(book.title)}">${escapeHTML(book.title)}</h3>
@@ -161,9 +172,9 @@ function renderDashboard() {
   if (!requireAuth()) return;
   const mine = state.books.filter(book => book.owner === state.currentUser.email);
   const myOrders = state.orders.filter(order => order.buyer === state.currentUser.email);
-  app.innerHTML = `<div class="dashboard-top"><div><p class="eyebrow">Your reading marketplace</p><h1>Welcome, ${escapeHTML(state.currentUser.name.split(" ")[0])}.</h1></div><button class="button coral" id="add-listing">+ List a book</button></div>
+  app.innerHTML = `<div class="dashboard-top"><div><p class="eyebrow">Your reading marketplace</p><h1>Welcome, ${escapeHTML(state.currentUser.name.split(" ")[0])}.</h1></div><button class="button coral" id="add-listing">+ Sell a book</button></div>
     <section class="stats"><div class="stat"><span>Active listings</span><strong>${mine.length}</strong></div><div class="stat"><span>Purchase requests</span><strong>${myOrders.length}</strong></div><div class="stat"><span>Saved books</span><strong>${state.favorites.length}</strong></div></section>
-    <div class="dashboard-grid"><section class="panel"><h2>Your listings</h2>${mine.length ? mine.map(book => `<div class="listing-row"><span class="mini-cover" style="background:${book.color}">B</span><div class="row-content"><strong>${escapeHTML(book.title)}</strong><small>${money(book.price)} · ${book.condition}</small></div><div class="row-actions"><button class="text-button" data-delete="${book.id}">Remove</button></div></div>`).join("") : `<div class="empty-state">You have not listed any books yet.</div>`}</section>
+    <div class="dashboard-grid"><section class="panel"><h2>Your listings</h2>${mine.length ? mine.map(book => `<div class="listing-row">${miniCover(book)}<div class="row-content"><strong>${escapeHTML(book.title)}</strong><small>${money(book.price)} · ${book.condition}</small></div><div class="row-actions"><button class="text-button" data-delete="${book.id}">Remove</button></div></div>`).join("") : `<div class="empty-state">You have not listed any books yet.</div>`}</section>
     <section class="panel"><h2>Messages & activity</h2>${state.messages.length || myOrders.length ? [...state.messages.filter(message => message.from === state.currentUser.email || message.to === state.currentUser.email).slice(-3).map(message => `<div class="message-row"><span class="mini-cover" style="background:var(--soft-coral);color:var(--coral)">✉</span><div class="row-content"><strong>${message.from === state.currentUser.email ? "To seller" : "New seller message"}</strong><small>${escapeHTML(message.text)}</small></div></div>`), ...myOrders.slice(-3).reverse().map(order => `<div class="message-row"><span class="mini-cover" style="background:${order.color}">↗</span><div class="row-content"><strong>Request for ${escapeHTML(order.title)}</strong><small>${order.status} · ${money(order.price)}</small></div></div>`)].join("") : `<div class="notice">Your purchase requests and seller conversations will appear here.</div>`}</section></div>`;
   document.querySelector("#add-listing").addEventListener("click", showListingForm);
   document.querySelectorAll("[data-delete]").forEach(button => button.addEventListener("click", () => {
@@ -192,21 +203,45 @@ function showAuth(mode = "login") {
 
 function showListingForm() {
   if (!requireAuth()) return;
+  let listingImages = [];
   openModal(`<h2>List a book</h2><p class="modal-intro">Tell other readers about a book you’re ready to pass on.</p><form id="listing-form"><div class="form-grid">
     <label class="form-field full-width">Book title<input class="field" name="title" required /></label><label class="form-field">Author<input class="field" name="author" required /></label><label class="form-field">Price (৳)<input class="field" name="price" type="number" min="1" required /></label>
+    <div class="photo-upload form-field"><span>Book photos</span><label class="photo-upload-box" for="listing-images">📷 <strong>Add book photos</strong><small>Select multiple JPG, PNG or WebP images · each up to 2 MB</small></label><input class="visually-hidden" id="listing-images" name="images" type="file" accept="image/*" multiple /></div>
     <label class="form-field">Category<select class="select" name="category"><option>Fiction</option><option>Self-help</option><option>Bangla</option><option>History</option><option>Academic</option></select></label><label class="form-field">Condition<select class="select" name="condition"><option>Like new</option><option>Good</option><option>Used</option></select></label>
-    <label class="form-field full-width">Location<input class="field" name="location" placeholder="e.g. Dhanmondi" required /></label></div><div class="form-actions"><button type="button" class="button secondary" id="cancel-listing">Cancel</button><button class="button">Publish listing</button></div></form>`);
+    <label class="form-field full-width">Location<input class="field" name="location" placeholder="e.g. Dhanmondi" required /></label>
+    <div class="image-previews hidden" id="listing-image-previews" aria-label="Selected book photo previews"></div>
+    </div><div class="form-actions"><button type="button" class="button secondary" id="cancel-listing">Cancel</button><button class="button">Publish listing</button></div></form>`);
   document.querySelector("#cancel-listing").addEventListener("click", closeModal);
+  document.querySelector("#listing-images").addEventListener("change", event => {
+    const files = [...event.target.files];
+    const previewContainer = document.querySelector("#listing-image-previews");
+    if (!files.length) { listingImages = []; previewContainer.innerHTML = ""; previewContainer.classList.add("hidden"); return; }
+    if (files.some(file => !file.type.startsWith("image/"))) { event.target.value = ""; showToast("Please choose image files only."); return; }
+    if (files.some(file => file.size > 2 * 1024 * 1024)) { event.target.value = ""; showToast("Each image must be smaller than 2 MB."); return; }
+    Promise.all(files.map(file => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener("load", () => resolve(reader.result));
+      reader.addEventListener("error", reject);
+      reader.readAsDataURL(file);
+    }))).then(images => {
+      listingImages = images;
+      previewContainer.innerHTML = listingImages.map((image, index) => `<img src="${escapeHTML(image)}" alt="Book photo ${index + 1} preview" />`).join("");
+      previewContainer.classList.remove("hidden");
+    }).catch(() => showToast("Could not read the selected images."));
+  });
   document.querySelector("#listing-form").addEventListener("submit", event => {
     event.preventDefault(); const data = Object.fromEntries(new FormData(event.target));
-    state.books.unshift({ ...data, id: `b${Date.now()}`, price: Number(data.price), seller: state.currentUser.name, owner: state.currentUser.email, color: "#1d6b66" });
+    delete data.images;
+    state.books.unshift({ ...data, id: `b${Date.now()}`, price: Number(data.price), images: listingImages, image: listingImages[0] || "", seller: state.currentUser.name, owner: state.currentUser.email, color: "#1d6b66" });
     persist(); closeModal(); render(); showToast("Your book is now listed.");
   });
 }
 
 function showBookDetails(id) {
   const book = state.books.find(item => item.id === id);
-  openModal(`<div class="book-cover" style="height:180px;background:${book.color};border-radius:9px;margin-bottom:23px"><span class="cover-title">${escapeHTML(book.title)}</span><span class="cover-author">${escapeHTML(book.author)}</span></div><h2>${escapeHTML(book.title)}</h2><p class="modal-intro">${escapeHTML(book.author)} · ${escapeHTML(book.category)} · ${escapeHTML(book.condition)}<br />Located in ${escapeHTML(book.location)} · Listed by ${escapeHTML(book.seller)}</p><div class="book-bottom"><strong class="price">${money(book.price)}</strong><div class="card-actions"><button class="button outline" id="add-cart">Add to cart</button><button class="button coral" id="request-book">Request this book</button></div></div>`);
+  const images = book.images?.length ? book.images : (book.image ? [book.image] : []);
+  const gallery = images.length > 1 ? `<div class="book-gallery">${images.map((image, index) => `<img src="${escapeHTML(image)}" alt="${escapeHTML(book.title)} photo ${index + 1}" />`).join("")}</div>` : "";
+  openModal(`<div class="book-cover ${images.length ? "has-image" : ""}" style="height:180px;background:${escapeHTML(book.color)};border-radius:9px;margin-bottom:23px">${coverContent(book)}</div>${gallery}<h2>${escapeHTML(book.title)}</h2><p class="modal-intro">${escapeHTML(book.author)} · ${escapeHTML(book.category)} · ${escapeHTML(book.condition)}<br />Located in ${escapeHTML(book.location)} · Listed by ${escapeHTML(book.seller)}</p><div class="book-bottom"><strong class="price">${money(book.price)}</strong><div class="card-actions"><button class="button outline" id="add-cart">Add to cart</button><button class="button coral" id="request-book">Request this book</button></div></div>`);
   document.querySelector("#add-cart").addEventListener("click", () => { addToCart(book.id); closeModal(); });
   document.querySelector("#request-book").addEventListener("click", () => {
     if (!requireAuth()) return;

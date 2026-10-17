@@ -12,6 +12,7 @@ BookCycle is a responsive browser MVP for a pre-owned book marketplace in Bangla
 - Remove individual items, clear the cart, and submit a demo checkout request.
 - Create and remove personal book listings.
 - Start a listing from the header or browse page; unauthenticated visitors are prompted to log in first.
+- Add multiple optional book photos to a listing, with a 2 MB per-image limit and in-form previews.
 - View dashboard statistics, listings, messages, and purchase activity.
 - Store the demo account, catalog changes, messages, and purchase requests in `localStorage`.
 - Responsive layout for desktop, tablet, and mobile browser widths.
