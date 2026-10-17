@@ -67,6 +67,7 @@ function renderHeader() {
     state.currentUser = null; persist(); render(); showToast("You have been logged out.");
   });
   document.querySelector("#login-button")?.addEventListener("click", () => showAuth("login"));
+  document.querySelector("#header-list-book")?.addEventListener("click", showListingForm);
   document.querySelector("#cart-button").onclick = showCart;
 }
 
@@ -133,7 +134,7 @@ function renderBrowse() {
   });
   app.innerHTML = `<section class="hero">
     <div><p class="eyebrow">A better way to read</p><h1>Good books deserve<br />a <em>second chapter.</em></h1></div>
-    <p class="hero-copy">Discover affordable pre-owned books from readers around Bangladesh, or pass your own favorites forward.</p>
+    <div class="hero-actions"><p class="hero-copy">Discover affordable pre-owned books from readers around Bangladesh, or pass your own favorites forward.</p><button class="button coral" id="browse-list-book">+ Sell a book</button></div>
   </section>
   <section class="search-panel" aria-label="Book search and filters">
     <input class="field search-field" id="search-input" placeholder="Search by title, author, or keyword" value="${escapeHTML(state.filters.query)}" />
@@ -153,6 +154,7 @@ function renderBrowse() {
     state.favorites = state.favorites.includes(bookId) ? state.favorites.filter(id => id !== bookId) : [...state.favorites, bookId];
     persist(); renderBrowse(); showToast(state.favorites.includes(bookId) ? "Book saved for later." : "Book removed from saved books.");
   }));
+  document.querySelector("#browse-list-book").addEventListener("click", showListingForm);
 }
 
 function renderDashboard() {
@@ -189,6 +191,7 @@ function showAuth(mode = "login") {
 }
 
 function showListingForm() {
+  if (!requireAuth()) return;
   openModal(`<h2>List a book</h2><p class="modal-intro">Tell other readers about a book you’re ready to pass on.</p><form id="listing-form"><div class="form-grid">
     <label class="form-field full-width">Book title<input class="field" name="title" required /></label><label class="form-field">Author<input class="field" name="author" required /></label><label class="form-field">Price (৳)<input class="field" name="price" type="number" min="1" required /></label>
     <label class="form-field">Category<select class="select" name="category"><option>Fiction</option><option>Self-help</option><option>Bangla</option><option>History</option><option>Academic</option></select></label><label class="form-field">Condition<select class="select" name="condition"><option>Like new</option><option>Good</option><option>Used</option></select></label>
